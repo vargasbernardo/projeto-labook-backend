@@ -29,48 +29,7 @@ app.post('/users', userController.createUser)
 // PUT user ja existente
 app.put('/users/:id', userController.updateUser)
 // Delete user existente
-app.delete('/users/:id', async (req: Request, res: Response) => {
-    try {
-        const idToDelete = req.params.id
-        const userDatabase = new UserDatabase()
-        const userDB = await userDatabase.findUserById(idToDelete)
-        if(!userDB) {
-            res.status(404)
-            throw new Error('"id" nao encontrado')
-        }
-        const user = new User(
-            userDB.id,
-            userDB.name,
-            userDB.email,
-            userDB.password,
-            userDB.role,
-            userDB.created_at
-        )
-        const deletedUser: UserDB = {
-            id: user.getId(),
-            name: user.getName(),
-            email: user.getEmail(),
-            password: user.getPassword(),
-            role: user.getRole(),
-            created_at: user.getCreatedAt()
-        }
-
-        await userDatabase.deleteUser(deletedUser, idToDelete)
-        res.status(200).send(user)
-    } catch (error) {
-        console.log(error)
-
-        if (req.statusCode === 200) {
-            res.status(500)
-        }
-
-        if (error instanceof Error) {
-            res.send(error.message)
-        } else {
-            res.send("Erro inesperado")
-        }
-    }
-})
+app.delete('/users/:id', userController.deleteUser)
 // CRUD posts
 // GET posts
 app.get('/posts', async (req: Request, res: Response) => {
