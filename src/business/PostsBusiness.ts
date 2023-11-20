@@ -1,13 +1,20 @@
 import { PostDatabase } from "../database/PostDatabase";
+import { CreateNewPostInputDTO, CreateNewPostOutputDTO } from "../dtos/Posts/createNewPost.dto";
+import { DeletePostInputDTO, DeletePostOutputDTO } from "../dtos/Posts/deletePost.dto";
+import { EditPostInputDTO, EditPostOutputDTO } from "../dtos/Posts/editPost.dto";
+import { FetchPostsInputDTO, FetchPostsOutputDTO } from "../dtos/Posts/fetchPosts.dto";
 import { BadRequestError } from "../errors/BadRequestError";
 import { NotFoundError } from "../errors/NotFoundError";
 import { Post, PostDB } from "../models/Post";
 
 
 export class PostsBusiness {
-  public async fetchPosts(input: any) {
-    const postDatabase = new PostDatabase();
-    const postDB = await postDatabase.getPosts();
+  constructor(
+    private postDatabase: PostDatabase
+  ){}
+  public async fetchPosts(input: FetchPostsInputDTO): Promise<FetchPostsOutputDTO> {
+    const {idToBeSearched} = input
+    const postDB = await this.postDatabase.getPosts();
     const posts: Array<Post> = postDB.map(
       (post) =>
         new Post(
@@ -20,18 +27,15 @@ export class PostsBusiness {
           post.updated_at
         )
     );
-    return posts;
+    const output: FetchPostsOutputDTO = {
+      posts
+    }
+    return output;
   }
-  public async createNewPost(input: any) {
+  public async createNewPost(input: CreateNewPostInputDTO): Promise<CreateNewPostOutputDTO> {
     const { id, creatorId, content } = input;
-    if (typeof creatorId !== "string") {
-      throw new BadRequestError("type errado");
-    }
-    if (typeof content !== "string") {
-      throw new BadRequestError("type errado");
-    }
-    const postDatabase = new PostDatabase();
-    const idToBeCreated = await postDatabase.getPostById(id);
+    
+    const idToBeCreated = await this.postDatabase.getPostById(id);
     if (idToBeCreated) {
       throw new BadRequestError("esse id ja esta cadastrado");
     }
@@ -54,14 +58,27 @@ export class PostsBusiness {
       updated_at: newPost.getUpdatedAt(),
     };
 
-    await postDatabase.insertPost(newPostDB);
-    return newPost;
-  }
-  public async editPost(input: any) {
-    const { id, content } = input;
+    await this.postDatabase.insertPost(newPostDB);
 
-    const postDatabase = new PostDatabase();
-    const postDB = await postDatabase.getPostById(id);
+    const output: CreateNewPostOutputDTO = {
+      message: "Post criado!",
+      post: {
+        id: newPost.getId(),
+        creatorId: newPost.getCreatorId(),
+        content: newPost.getContent(),
+        likes: newPost.getLikes(),
+        dislikes: newPost.getDislikes(),
+        createdAt: newPost.getCreatedAt(),
+        updatedAt: newPost.getUpdatedAt()
+      }
+    }
+    return output;
+  }
+  public async editPost(input: EditPostInputDTO): Promise<EditPostOutputDTO> {
+    const { idToEdit, content } = input;
+
+    
+    const postDB = await this.postDatabase.getPostById(idToEdit);
     if (!postDB) {
       throw new NotFoundError("'id' nao encontrado");
     }
@@ -74,7 +91,7 @@ export class PostsBusiness {
       postDB.created_at,
       postDB.updated_at
     );
-    id && post.setId(id);
+    
     content && post.setContent(content);
 
     const newPostDb: PostDB = {
@@ -86,12 +103,26 @@ export class PostsBusiness {
       created_at: post.getCreatedAt(),
       updated_at: post.getUpdatedAt(),
     };
-    await postDatabase.updatePost(newPostDb, id);
+    await this.postDatabase.updatePost(newPostDb, idToEdit);
+
+    const output: EditPostOutputDTO = {
+      message: "post atualizado",
+      post: {
+        id: post.getId(),
+        creatorId: post.getCreatorId(),
+        content: post.getContent(),
+        likes: post.getLikes(),
+        dislikes: post.getDislikes(),
+        createdAt: post.getCreatedAt(),
+        updatedAt: post.getUpdatedAt()
+      }
+    }
+    return output
   }
-  public async deletePost(input: any) {
-    const { id } = input;
-    const postDatabase = new PostDatabase();
-    const postDB = await postDatabase.getPostById(id);
+  public async deletePost(input: DeletePostInputDTO):Promise<DeletePostOutputDTO> {
+    const { idToDelete } = input;
+    
+    const postDB = await this.postDatabase.getPostById(idToDelete);
     if (!postDB) {
       throw new NotFoundError("id nao encontrado");
     }
@@ -114,7 +145,12 @@ export class PostsBusiness {
       updated_at: post.getUpdatedAt(),
     };
 
-    await postDatabase.deletePost(deletedPost, id);
-    return post;
+    await this.postDatabase.deletePost(deletedPost, idToDelete);
+
+    const output: DeletePostOutputDTO = {
+      message: "Post deletado",
+      post
+    }
+    return output;
   }
 }
